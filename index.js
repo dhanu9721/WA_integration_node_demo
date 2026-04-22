@@ -16,12 +16,46 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "*")
 
 const app = express();
 
+// Render sits behind a proxy — trust it so req.ip shows the real client IP.
+app.set("trust proxy", true);
+
 app.use(
   cors({
     origin: ALLOWED_ORIGINS.includes("*") ? true : ALLOWED_ORIGINS,
   })
 );
 app.use(express.json({ limit: "100kb" }));
+
+// --- Request / response logger ---
+// Logs every incoming request, the body, and the response status + duration.
+app.use((req, res, next) => {
+  const started = Date.now();
+  const reqId = Math.random().toString(36).slice(2, 8);
+  const ip = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress;
+  const origin = req.headers.origin || "-";
+  const ua = (req.headers["user-agent"] || "-").slice(0, 80);
+
+  console.log(
+    `\n[${new Date().toISOString()}] ──▶ ${req.method} ${req.originalUrl}  id=${reqId}`
+  );
+  console.log(`   ip=${ip}  origin=${origin}`);
+  console.log(`   ua=${ua}`);
+  if (req.body && Object.keys(req.body).length) {
+    console.log(`   body=${truncate(JSON.stringify(req.body), 500)}`);
+  }
+
+  res.on("finish", () => {
+    const ms = Date.now() - started;
+    console.log(
+      `[${new Date().toISOString()}] ◀── ${req.method} ${req.originalUrl}  id=${reqId}  status=${res.statusCode}  ${ms}ms`
+    );
+  });
+  next();
+});
+
+function truncate(s, n) {
+  return s.length > n ? s.slice(0, n) + `…(+${s.length - n} chars)` : s;
+}
 
 // --- Health check ---
 app.get("/health", (_req, res) => {
@@ -36,7 +70,10 @@ app.get("/health", (_req, res) => {
 // The frontend calls this when the payment flow completes.
 // We forward a WhatsApp message request to AiSensy.
 app.post("/api/trigger", async (req, res) => {
+  console.log("   🔔 /api/trigger hit — payment flow completed on frontend");
+
   if (!AISENSY_PROJECT_ID || !AISENSY_API_PWD) {
+    console.error("   ⚠️  missing AISENSY_PROJECT_ID or AISENSY_API_PWD");
     return res.status(500).json({
       ok: false,
       error:
@@ -51,8 +88,10 @@ app.post("/api/trigger", async (req, res) => {
   const url = `https://apis.aisensy.com/project-apis/v1/project/${AISENSY_PROJECT_ID}/messagesto:${to}`;
   const body = req.body && Object.keys(req.body).length ? req.body : {};
 
-  console.log("[aisensy] ->", url);
+  console.log(`   📤 forwarding to AiSensy: to=${to}`);
+  console.log(`      url=${url}`);
 
+  const t0 = Date.now();
   try {
     const upstream = await fetch(url, {
       method: "POST",
@@ -72,8 +111,10 @@ app.post("/api/trigger", async (req, res) => {
       parsed = text;
     }
 
-    console.log("[aisensy] status:", upstream.status);
-    console.log("[aisensy] body:", parsed);
+    const dt = Date.now() - t0;
+    const emoji = upstream.ok ? "✅" : "❌";
+    console.log(`   ${emoji} AiSensy responded: status=${upstream.status}  ${dt}ms`);
+    console.log(`      body=${truncate(typeof parsed === "string" ? parsed : JSON.stringify(parsed), 500)}`);
 
     return res.status(upstream.status).json({
       ok: upstream.ok,
@@ -81,7 +122,8 @@ app.post("/api/trigger", async (req, res) => {
       data: parsed,
     });
   } catch (err) {
-    console.error("[aisensy] error:", err);
+    const dt = Date.now() - t0;
+    console.error(`   💥 AiSensy call failed after ${dt}ms: ${err.name}: ${err.message}`);
     return res.status(502).json({
       ok: false,
       error: err.message,
