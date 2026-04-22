@@ -1,0 +1,19 @@
+{
+  "name": "wa-integration-node-demo",
+  "version": "1.0.0",
+  "description": "Proxy backend that triggers AiSensy WhatsApp messages when the frontend payment flow completes.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0"
+  }
+}

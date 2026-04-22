@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: wa-integration-node-demo
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: AISENSY_PROJECT_ID
+        sync: false
+      - key: AISENSY_API_PWD
+        sync: false
+      - key: AISENSY_TO
+        value: "9742569189"
+      - key: ALLOWED_ORIGINS
+        value: "*"
