@@ -8,7 +8,13 @@ const fetch = globalThis.fetch || require("node-fetch");
 const PORT = process.env.PORT || 3000;
 const AISENSY_PROJECT_ID = process.env.AISENSY_PROJECT_ID || "";
 const AISENSY_API_PWD = process.env.AISENSY_API_PWD || "";
-const AISENSY_TO = process.env.AISENSY_TO || "9742569189";
+const AISENSY_TO = process.env.AISENSY_TO || "8858318301";
+const AISENSY_DOC_CAPTION =
+  process.env.AISENSY_DOC_CAPTION || "Your document caption here";
+const AISENSY_DOC_LINK =
+  process.env.AISENSY_DOC_LINK ||
+  "https://www.clickdimensions.com/links/TestPDFfile.pdf";
+const AISENSY_DOC_FILENAME = process.env.AISENSY_DOC_FILENAME || "wds";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "*")
   .split(",")
   .map((s) => s.trim())
@@ -51,8 +57,17 @@ app.post("/api/trigger", async (req, res) => {
   }
 
   const to = (req.body && req.body.to) || AISENSY_TO;
-  const url = `https://apis.aisensy.com/project-apis/v1/project/${AISENSY_PROJECT_ID}/messagesto:${to}`;
-  const body = req.body && Object.keys(req.body).length ? req.body : {};
+  const url = `https://apis.aisensy.com/project-apis/v1/project/${AISENSY_PROJECT_ID}/messages`;
+
+  const payload = {
+    to,
+    type: "document",
+    document: {
+      caption: AISENSY_DOC_CAPTION,
+      link: AISENSY_DOC_LINK,
+      filename: AISENSY_DOC_FILENAME,
+    },
+  };
 
   try {
     const upstream = await fetch(url, {
@@ -62,7 +77,7 @@ app.post("/api/trigger", async (req, res) => {
         "Content-Type": "application/json",
         "X-AiSensy-Project-API-Pwd": AISENSY_API_PWD,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
     const text = await upstream.text();
