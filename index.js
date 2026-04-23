@@ -39,6 +39,11 @@ app.get("/health", (_req, res) => {
     ok: true,
     service: "wa-integration-node-demo",
     aisensyConfigured: Boolean(AISENSY_PROJECT_ID && AISENSY_API_PWD),
+    env: {
+      AISENSY_PROJECT_ID: AISENSY_PROJECT_ID ? "set" : "MISSING",
+      AISENSY_API_PWD: AISENSY_API_PWD ? "set" : "MISSING",
+      AISENSY_TO: AISENSY_TO || "MISSING",
+    },
   });
 });
 
