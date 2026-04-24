@@ -74,7 +74,7 @@ app.post("/api/trigger", async (req, res) => {
     },
   };
 
-  console.log(`[aisensy] -> document POST ${url}`);
+  console.log(`[aisensy] -> document POST ${url} (to=${to})`);
   try {
     const upstream = await fetch(url, {
       method: "POST",
