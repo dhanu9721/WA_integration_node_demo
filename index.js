@@ -32,6 +32,31 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "*")
   .map((s) => s.trim())
   .filter(Boolean);
 
+/**
+ * WhatsApp / AiSensy expect international format without + (e.g. 918858318301).
+ * Ten-digit Indian mobiles (starting 6–9) get 91 prefixed to match Postman.
+ */
+function normalizeWhatsAppRecipient(to) {
+  if (to === undefined || to === null) return "";
+  const trimmed = String(to).trim().replace(/^\+/, "");
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10 && /^[6-9]\d{9}$/.test(digits)) {
+    return `91${digits}`;
+  }
+  return digits || trimmed;
+}
+
+function logAisensyBillingHint(status, parsed) {
+  if (status === 402 && parsed && typeof parsed === "object") {
+    const msg = parsed.message || "";
+    if (String(msg).includes("WCC") || String(msg).includes("Credits")) {
+      console.error(
+        "[aisensy hint] 402 = insufficient WhatsApp Conversation Credits on this AiSensy project — top up WCC in the AiSensy dashboard."
+      );
+    }
+  }
+}
+
 const app = express();
 app.set("trust proxy", true);
 app.use(
@@ -72,7 +97,7 @@ app.post("/api/trigger", async (req, res) => {
   }
 
   const body = (req.body && typeof req.body === "object") ? req.body : {};
-  const to = body.to || AISENSY_TO;
+  const to = normalizeWhatsAppRecipient(body.to || AISENSY_TO);
   const templateName = body.templateName || AISENSY_POLICY_TEMPLATE_NAME;
   const bodyText = body.bodyText ?? AISENSY_POLICY_TEMPLATE_BODY;
   const docLink = body.documentLink || AISENSY_DOC_LINK;
@@ -82,7 +107,7 @@ app.post("/api/trigger", async (req, res) => {
   const payload = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to: String(to),
+    to,
     type: "template",
     template: {
       language: { policy: "deterministic", code: "en" },
@@ -124,6 +149,7 @@ app.post("/api/trigger", async (req, res) => {
     try { parsed = JSON.parse(text); } catch (_) { parsed = text; }
 
     if (!upstream.ok) {
+      logAisensyBillingHint(upstream.status, parsed);
       console.error(
         `[aisensy error] policy template status=${upstream.status} body=${
           typeof parsed === "string" ? parsed : JSON.stringify(parsed)
@@ -160,7 +186,7 @@ app.post(
       parsedBody = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
     } catch (_) { /* keep empty */ }
 
-    const to = parsedBody.to || AISENSY_TO;
+    const to = normalizeWhatsAppRecipient(parsedBody.to || AISENSY_TO);
     const reason = parsedBody.reason || "unknown";
     console.log(`[${new Date().toISOString()}] /api/abandon hit  to=${to}  reason=${reason}`);
 
@@ -175,7 +201,7 @@ app.post(
     const payload = {
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to: String(to),
+      to,
       type: "template",
       template: {
         language: { policy: "deterministic", code: "en" },
@@ -204,6 +230,7 @@ app.post(
       try { parsedRes = JSON.parse(text); } catch (_) { parsedRes = text; }
 
       if (!upstream.ok) {
+        logAisensyBillingHint(upstream.status, parsedRes);
         console.error(
           `[aisensy error] failure status=${upstream.status} body=${
             typeof parsedRes === "string" ? parsedRes : JSON.stringify(parsedRes)
