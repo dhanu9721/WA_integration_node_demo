@@ -8,7 +8,7 @@ const fetch = globalThis.fetch || require("node-fetch");
 const PORT = process.env.PORT || 3000;
 const AISENSY_PROJECT_ID = process.env.AISENSY_PROJECT_ID || "";
 const AISENSY_API_PWD = process.env.AISENSY_API_PWD || "";
-const AISENSY_TO = process.env.AISENSY_TO || "919810699203";
+const AISENSY_TO = process.env.AISENSY_TO || "9810699203";
 
 // Document message (the only call this backend makes).
 const AISENSY_DOC_CAPTION =
