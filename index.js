@@ -8,7 +8,7 @@ const fetch = globalThis.fetch || require("node-fetch");
 const PORT = process.env.PORT || 3000;
 const AISENSY_PROJECT_ID = process.env.AISENSY_PROJECT_ID || "";
 const AISENSY_API_PWD = process.env.AISENSY_API_PWD || "";
-const AISENSY_TO = process.env.AISENSY_TO || "919810699203";
+const AISENSY_TO = process.env.AISENSY_TO || "918858318301";
 
 // Policy template with header document (sent on /api/trigger — e.g. payment success).
 const AISENSY_POLICY_TEMPLATE_NAME =
@@ -33,7 +33,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "*")
   .filter(Boolean);
 
 /**
- * WhatsApp / AiSensy expect international format without + (e.g. 919810699203).
+ * WhatsApp / AiSensy expect international format without + (e.g. 918858318301).
  * Ten-digit Indian mobiles (starting 6–9) get 91 prefixed to match Postman.
  */
 function normalizeWhatsAppRecipient(to) {
